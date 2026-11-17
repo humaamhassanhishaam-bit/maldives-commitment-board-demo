@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maldives Commitment Board</title>
+<script src="demo-api.js"></script>
+<link rel="stylesheet" href="vendor/leaflet.css">
+<style>
+  :root{
+    --bg:#ffffff;
+    --sea:#e9f2ff;
+    --surface:#f4f8ff;
+    --surface-2:#eaf2ff;
+    --line:#d6e4fb;
+    --ink:#0a2a5c;
+    --ink-2:#4a6490;
+    --blue:#1769ff;
+    --blue-deep:#0b3d91;
+    --blue-soft:#cfe0ff;
+    --radius:16px;
+    --header-h:96px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--ink);
+    display:flex;flex-direction:column;min-height:100vh;
+  }
+  button{font:inherit;cursor:pointer}
+
+  /* ---------- Header ---------- */
+  header{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    padding:18px 32px;border-bottom:1px solid var(--line);background:var(--bg);
+  }
+  .brand{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue);font-weight:700}
+  h1{font-size:clamp(20px,2.4vw,30px);font-weight:700;letter-spacing:-.01em}
+  .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .btn{
+    border:1px solid var(--line);background:var(--bg);color:var(--ink);
+    padding:9px 16px;border-radius:999px;font-size:14px;font-weight:600;
+    transition:background .15s,border-color .15s;
+  }
+  .btn:hover{background:var(--surface);border-color:var(--blue-soft)}
+  a.btn{text-decoration:none}
+  .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  .btn.primary:hover{background:var(--blue-deep);border-color:var(--blue-deep)}
+
+  /* ---------- Layout ---------- */
+  main{flex:1;display:grid;grid-template-columns:minmax(340px,42%) 1fr;min-height:0}
+  .map-pane{
+    position:sticky;top:0;align-self:start;height:calc(100vh - var(--header-h));
+    border-right:1px solid var(--line);background:var(--sea);
+  }
+  #map{position:absolute;inset:0;background:var(--sea)}
+  .map-back{
+    position:absolute;z-index:500;top:14px;left:14px;
+    background:#fff;border:1px solid var(--line);color:var(--ink);
+    border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;
+    box-shadow:0 4px 14px rgba(11,61,145,.10);display:none;
+  }
+  .map-back.show{display:inline-flex;gap:6px;align-items:center}
+  .map-legend{
+    position:absolute;z-index:500;bottom:28px;left:14px;background:rgba(255,255,255,.92);
+    border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:12px;color:var(--ink-2);
+    display:flex;flex-direction:column;gap:4px
+  }
+  .map-legend span{display:flex;align-items:center;gap:8px}
+  .map-legend i{width:12px;height:12px;border-radius:3px;display:inline-block;border:1.5px solid}
+  .content{padding:24px 32px 32px;display:flex;flex-direction:column;gap:18px;min-width:0}
+
+  /* ---------- Place panel ---------- */
+  .crumbs{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+  .crumbs button{border:0;background:none;color:var(--blue);font-weight:600;padding:0}
+  .crumbs b{color:var(--ink)}
+  .place h2{font-size:clamp(22px,2vw,30px);letter-spacing:-.01em;margin-top:4px}
+  .place .sub{color:var(--ink-2);font-size:14px;margin-top:2px}
+  .islands{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;max-height:132px;overflow:auto;padding-right:4px}
+  .ichip{
+    border:1px solid var(--line);background:#fff;color:var(--ink);
+    padding:5px 11px;border-radius:999px;font-size:13px;font-weight:500;display:inline-flex;gap:6px;align-items:center
+  }
+  .ichip:hover{border-color:var(--blue);color:var(--blue)}
+  .ichip.has{background:var(--surface-2);border-color:var(--blue-soft);font-weight:600}
+  .ichip em{font-style:normal;background:var(--blue);color:#fff;border-radius:999px;font-size:11px;padding:0 6px;font-weight:700}
+  .ichip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .linklike{border:0;background:none;color:var(--blue);font-weight:600;font-size:13px;margin-top:8px}
+
+  /* ---------- Stats + filters ---------- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 18px}
+  .stat b{display:block;font-size:28px;line-height:1.1;color:var(--blue-deep)}
+  .stat span{font-size:13px;color:var(--ink-2)}
+  .filters{display:flex;flex-direction:column;gap:10px}
+  .frow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .flabel{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);min-width:96px}
+  .live{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-2);font-weight:600}
+  .live i{width:8px;height:8px;border-radius:50%;background:#19b46b;box-shadow:0 0 0 3px rgba(25,180,107,.2)}
+  .cta{font-size:clamp(14px,1.2vw,20px);color:var(--ink-2)}
+  .cta b{color:var(--blue)}
+  .chip{
+    border:1px solid var(--line);background:var(--bg);color:var(--ink);
+    padding:8px 16px;border-radius:999px;font-size:14px;font-weight:600;
+    display:inline-flex;align-items:center;gap:8px;
+  }
+  .chip i{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+  .chip:hover:not([aria-pressed="true"]){background:var(--surface)}
+
+  /* ---------- Cards ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+  .card{
+    background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 20px;display:flex;flex-direction:column;gap:12px;
+    border-top:4px solid var(--c,var(--blue));
+    transition:box-shadow .2s,transform .2s;cursor:pointer;
+  }
+  .card:hover{box-shadow:0 8px 24px rgba(23,105,255,.10);transform:translateY(-2px)}
+  .pill{
+    align-self:flex-start;font-size:12px;font-weight:700;letter-spacing:.04em;
+    padding:4px 10px;border-radius:999px;background:var(--surface-2);color:var(--blue-deep)
+  }
+  .card p{font-size:16px;line-height:1.5}
+  .meta{margin-top:auto;font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:2px}
+  .meta strong{color:var(--ink);font-size:14px}
+  .empty{padding:40px;text-align:center;color:var(--ink-2);border:1px dashed var(--line);border-radius:var(--radius)}
+  .sample-note{background:#fff8e6;border:1px solid #f2dca0;color:#7a5a00;padding:10px 16px;border-radius:12px;font-size:13px}
+  footer{padding:12px 32px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-2);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+  /* ---------- Map styling ---------- */
+  .leaflet-container{font-family:inherit;background:var(--sea)}
+  .leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.8)!important}
+  .leaflet-control-zoom a{color:var(--ink)!important}
+  .reef{cursor:pointer;transition:fill-opacity .2s}
+  .atoll-label{
+    background:none;border:0;white-space:nowrap;
+    font-size:12px;font-weight:700;color:var(--ink);text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;
+    pointer-events:none
+  }
+  .badge{
+    display:flex;align-items:center;justify-content:center;
+    width:100%;height:100%;border-radius:50%;
+    background:var(--blue);color:#fff;font-weight:700;font-size:12px;
+    box-shadow:0 0 0 3px rgba(255,255,255,.9),0 4px 10px rgba(11,61,145,.25);
+  }
+  .badge.spot{animation:pulse 1.6s ease-out infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 3px #fff,0 0 0 4px rgba(23,105,255,.6)}100%{box-shadow:0 0 0 3px #fff,0 0 0 22px rgba(23,105,255,0)}}
+  .leaflet-tooltip.island-label{
+    background:none;border:0;box-shadow:none;padding:0;
+    color:var(--ink);font-weight:600;font-size:11px;
+    text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;
+  }
+  .leaflet-tooltip.island-label::before{display:none}
+  .leaflet-tooltip.hover-tip{border:1px solid var(--line);color:var(--ink);font-weight:600;border-radius:8px;box-shadow:0 4px 12px rgba(11,61,145,.12)}
+  /* zoom-dependent visibility */
+  #map .island-label,#map .island-badge{display:none}
+  #map.z-atoll .island-badge{display:block}
+  #map.z-atoll .atoll-badge,#map.z-atoll .atoll-label{display:none}
+  #map.z-labels .island-label.t1,#map.z-labels2 .island-label{display:block}
+
+  /* ---------- Display (LED) mode ---------- */
+  .spotlight{display:none}
+  body.display{height:100vh;overflow:hidden}
+  body.display header{padding:14px 48px;flex-wrap:nowrap}
+  body.display h1{font-size:clamp(20px,2.2vw,38px)}
+  body.display .eyebrow{font-size:clamp(11px,1vw,16px)}
+  body.display .tools .hide-in-display,body.display .filters,body.display .grid,
+  body.display .sample-note,body.display footer,body.display .islands,body.display .linklike,
+  body.display .crumbs,body.display .map-back,body.display .leaflet-control-zoom{display:none!important}
+  body.display main{grid-template-columns:minmax(420px,44vw) 1fr;grid-template-rows:minmax(0,1fr);overflow:hidden}
+  body.display .map-pane{position:relative;height:auto;align-self:stretch}
+  body.display .content{padding:24px 48px;overflow:hidden}
+  body.display .stats{grid-template-columns:repeat(3,1fr)}
+  body.display .stat b{font-size:clamp(28px,2.6vw,48px)}
+  body.display .spotlight{display:flex;flex-direction:column;justify-content:center;gap:24px;flex:1;min-height:0}
+  body.display .spotlight .pill{font-size:clamp(14px,1.3vw,22px);padding:8px 18px}
+  body.display .spotlight blockquote{
+    font-size:clamp(24px,2.6vw,52px);line-height:1.25;font-weight:600;letter-spacing:-.01em;
+    border-left:8px solid var(--c,var(--blue));padding-left:32px;animation:fade .7s ease both;
+  }
+  body.display .spotlight .who{font-size:clamp(18px,1.8vw,32px);color:var(--ink-2);padding-left:40px}
+  body.display .spotlight .who strong{color:var(--ink);display:block}
+  body.display .progress{height:6px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+  body.display .progress div{height:100%;background:var(--blue);width:0}
+  body.display .place h2{font-size:clamp(22px,2vw,36px)}
+  @keyframes fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+  @media (max-width:860px){
+    main{grid-template-columns:1fr}
+    .map-pane{position:relative;height:68vh;border-right:0;border-bottom:1px solid var(--line)}
+    header,.content{padding-left:16px;padding-right:16px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .badge.spot,body.display .spotlight blockquote{animation:none}
+    .card{transition:none}
+  }
+</style>
+</head>
+<body>
+
+<header id="hdr">
+  <div class="brand">
+    <span class="eyebrow">16 Days of Activism · Make All Spaces Safe</span>
+    <h1>Our Commitments to End Technology-Facilitated Gender-Based Violence</h1>
+  </div>
+  <div class="tools">
+    <span class="live" id="live" hidden><i></i>Live</span>
+    <a class="btn hide-in-display" id="addLink" href="submit.html" hidden>Add a commitment</a>
+    <button class="btn hide-in-display" id="importBtn" title="Load a commitments .json file">Import JSON</button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <button class="btn primary" id="displayBtn">Display mode</button>
+  </div>
+</header>
+
+<main>
+  <section class="map-pane" aria-label="Map of the Maldives">
+    <div id="map"></div>
+    <button class="map-back" id="mapBack">← Back</button>
+    <div class="map-legend" aria-hidden="true">
+      <span><i style="background:#1769ff;border-color:#0b3d91"></i>Has commitments</span>
+      <span><i style="background:#fff;border-color:#1769ff"></i>Island</span>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="sample-note" id="sampleNote">Sample content only. Replace the entries in <code>commitments.json</code> (or the <code>COMMITMENTS</code> list in this file) with the validated commitments provided by UNFPA.</div>
+    <div class="place" id="place"></div>
+    <div class="stats" id="stats"></div>
+    <div class="filters" id="filters" role="group" aria-label="Filter by pillar"></div>
+    <div class="grid" id="grid"></div>
+    <div class="spotlight" id="spotlight" aria-live="polite"></div>
+  </section>
+</main>
+
+<footer>
+  <span>Click an atoll, then an island · <b>F</b> display mode · <b>Esc</b> exit</span>
+  <span>Island outlines © OpenStreetMap contributors (ODbL)</span>
+</footer>
+
+<script src="vendor/leaflet.js"></script>
+<script src="islands.js"></script>
+<script>
+/* =====================================================================
+   1. COMMITMENTS — edit here, or drop a commitments.json next to this file.
+   pillar : "prevention" | "support" | "justice"
+   atoll  : an atoll id (see ATOLL IDS below) or "national"
+   island : optional island name inside that atoll (matched case-insensitively)
+   ATOLL IDS: haa_alif haa_dhaalu shaviyani noonu raa baa lhaviyani kaafu
+     alif_alif alif_dhaal vaavu faafu meemu dhaalu thaa laamu
+     gaafu_alif gaafu_dhaalu gnaviyani addu
+   ===================================================================== */
+const PILLARS = {
+  prevention:{label:"Prevention",               color:"#1769ff"},
+  support:   {label:"Survivor-centred support", color:"#00a6c8"},
+  justice:   {label:"Justice & accountability", color:"#0b3d91"}
+};
+/* Reporting level. Government = ministries, island/atoll/city councils, WDCs, police/justice sector, independent institutions. */
+const LEVELS = {
+  individual:  {label:"Individuals"},
+  government:  {label:"Government & councils"},
+  organisation:{label:"Organisations"}
+};
+function levelOf(c){
+  if(c.level && LEVELS[c.level]) return c.level;
+  const s=(c.sector||"").toLowerCase();
+  if(/individual/.test(s)) return "individual";
+  if(/government|ministry|council|wdc|women's development|police|justice|authority|institution/.test(s)) return "government";
+  return "organisation";
+}
+
+let COMMITMENTS = [
+  {org:"Sample Ministry A",         sector:"Government",     atoll:"kaafu",       island:"Malé",          pillar:"prevention",text:"Integrate digital safety and online-abuse awareness into national school programmes."},
+  {org:"Sample Civil Society B",    sector:"Civil society",  atoll:"addu",        island:"Hithadhoo",     pillar:"support",   text:"Offer a confidential helpline and peer support for people facing online harassment."},
+  {org:"Sample Authority C",        sector:"Government",     atoll:"national",                            pillar:"justice",   text:"Streamline reporting and investigation of non-consensual sharing of intimate images."},
+  {org:"Sample Telecom D",          sector:"Private sector", atoll:"kaafu",       island:"Hulhumalé",     pillar:"prevention",text:"Run public awareness campaigns on safe use of mobile technology and reporting tools."},
+  {org:"Sample Council E",          sector:"Local council",  atoll:"haa_dhaalu",  island:"Kulhudhuffushi",pillar:"support",   text:"Train island-level responders to refer survivors of TFGBV to services."},
+  {org:"Sample Service Provider F", sector:"GBV services",   atoll:"laamu",       island:"Fonadhoo",      pillar:"support",   text:"Expand counselling services to include digital-abuse case management."},
+  {org:"Sample Institution G",      sector:"Government",     atoll:"gaafu_dhaalu",island:"Thinadhoo",     pillar:"justice",   text:"Publish annual data on TFGBV cases handled to strengthen accountability."},
+  {org:"Sample Network H",          sector:"Civil society",  atoll:"noonu",       island:"Manadhoo",      pillar:"prevention",text:"Engage young people as digital safety champions in their communities."},
+  {org:"Sample Platform I",         sector:"Private sector", atoll:"national",                            pillar:"justice",   text:"Establish a fast-track channel for removing abusive content on request."},
+  {org:"Sample Council J",          sector:"Island council", atoll:"lhaviyani",   island:"Naifaru",       pillar:"prevention",text:"Host community sessions on recognising and reporting online abuse."},
+  {org:"Sample WDC K",              sector:"Women's Development Committee", atoll:"thaa", island:"Veymandoo", pillar:"support", text:"Set up a trusted point of contact on the island for women facing online abuse."},
+  {org:"Individual (name withheld)",sector:"Individual",     atoll:"addu",        island:"Feydhoo",       pillar:"prevention",text:"Speak up when I see harassment in group chats and report abusive accounts."}
+];
+
+/* =====================================================================
+   2. GEODATA + LOOKUPS
+   ===================================================================== */
+const GEO = window.MALDIVES || {atolls:[],islands:{features:[]}};
+const ATOLL = Object.fromEntries(GEO.atolls.map(a=>[a.id,a]));
+const ISLAND = {};                 // id -> feature
+const ISLANDS_BY_ATOLL = {};       // atoll -> [feature]
+GEO.islands.features.forEach(f=>{
+  ISLAND[f.properties.id]=f;
+  (ISLANDS_BY_ATOLL[f.properties.atoll] ||= []).push(f);
+});
+const norm = s => (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/g,"");
+function findIsland(atoll, name){
+  if(!name || !ISLANDS_BY_ATOLL[atoll]) return null;
+  const n = norm(name);
+  const hits = ISLANDS_BY_ATOLL[atoll].filter(f=>norm(f.properties.name)===n);
+  if(!hits.length) return null;
+  hits.sort((a,b)=>a.properties.t-b.properties.t);
+  return hits[0].properties.id;
+}
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const atollName = id => id==="national" ? "Nationwide" : (ATOLL[id]?.name || id);
+const placeLabel = c => c._island ? `${ISLAND[c._island].properties.name}, ${atollName(c.atoll)}` : atollName(c.atoll);
+const state = {pillar:null, level:null, atoll:null, island:null, showAll:false, timer:null, i:-1, spotIsland:null, spotAtoll:null};
+
+function prepare(){
+  COMMITMENTS.forEach(c=>{
+    c.level = levelOf(c);
+    c._island = findIsland(c.atoll, c.island);
+    if(c.island && !c._island) console.warn(`Island "${c.island}" not found in ${c.atoll}; pinned to the atoll instead.`);
+  });
+}
+const byPillar = () => COMMITMENTS.filter(c=>(!state.pillar || c.pillar===state.pillar) && (!state.level || c.level===state.level));
+function inScope(){
+  return byPillar().filter(c=>{
+    if(state.island) return c._island===state.island;
+    if(state.atoll)  return c.atoll===state.atoll;
+    return true;
+  });
+}
+
+/* =====================================================================
+   3. MAP
+   ===================================================================== */
+const map = L.map("map",{zoomSnap:0.25,zoomDelta:0.5,minZoom:5,maxZoom:17,attributionControl:true,zoomControl:true});
+map.zoomControl.setPosition("topright");
+map.attributionControl.setPrefix(false).addAttribution("© OpenStreetMap contributors");
+const ALL_BOUNDS = L.latLngBounds(GEO.atolls.flatMap(a=>a.bounds));
+const fitAll = (opts={}) => map.fitBounds(ALL_BOUNDS,{padding:[24,24],...opts});
+
+/* Reef ring around each atoll (ellipse from its island bounds). */
+function ellipse(a){
+  const [[s,w],[n,e]] = a.bounds, cy=(s+n)/2, cx=(w+e)/2;
+  const ry=Math.max((n-s)/2*1.12,0.05), rx=Math.max((e-w)/2*1.18,0.05);
+  return Array.from({length:72},(_,k)=>{const t=k/72*2*Math.PI;return [cy+ry*Math.sin(t),cx+rx*Math.cos(t)];});
+}
+const reefLayer = L.layerGroup().addTo(map);
+const reefs = {};
+GEO.atolls.forEach(a=>{
+  reefs[a.id] = L.polygon(ellipse(a),{
+    className:"reef",color:"#9dbbe9",weight:1.2,dashArray:"2 5",fillColor:"#d9e8ff",fillOpacity:.45
+  }).on("click",()=>openAtoll(a.id))
+    .on("mouseover",e=>e.target.setStyle({fillOpacity:.75}))
+    .on("mouseout", e=>e.target.setStyle({fillOpacity:a.id===state.atoll?.15:.45}))
+    .addTo(reefLayer);
+  const [[s,w],[n,e]] = a.bounds;
+  L.marker([(s+n)/2, e],{interactive:false,keyboard:false,
+    icon:L.divIcon({className:"atoll-label",html:`&nbsp;&nbsp;&nbsp;${esc(a.name)}`,iconSize:null,iconAnchor:[-6,8]})}).addTo(reefLayer);
+});
+
+/* Islands */
+const counts = {island:{}, atoll:{}};
+function islandStyle(f){
+  const p=f.properties, n=counts.island[p.id]||0, sel=p.id===state.island||p.id===state.spotIsland;
+  if(sel)  return {color:"#0b3d91",weight:2.5,fillColor:"#1769ff",fillOpacity:.55};
+  if(n)    return {color:"#0b3d91",weight:1.5,fillColor:"#1769ff",fillOpacity:.95};
+  return {color:"#1769ff",weight:1,fillColor:"#ffffff",fillOpacity:1};
+}
+const islandLayer = L.geoJSON(GEO.islands,{
+  style:islandStyle,
+  onEachFeature:(f,layer)=>{
+    const p=f.properties;
+    if(p.name){
+      layer.bindTooltip(esc(p.name),{permanent:true,direction:"right",offset:[6,0],className:`island-label t${p.t}`,interactive:false});
+    }else{
+      layer.bindTooltip(esc(p.name||"Unnamed islet"),{direction:"top",className:"hover-tip",sticky:true});
+    }
+    layer.on("click",ev=>{L.DomEvent.stopPropagation(ev); openIsland(p.id);});
+  }
+}).addTo(map);
+const islandLayerById = {};
+islandLayer.eachLayer(l=>islandLayerById[l.feature.properties.id]=l);
+
+const badgeLayer = L.layerGroup().addTo(map);
+function badge(latlng,n,cls,spot,onClick){
+  const size = n>9?30:26;
+  return L.marker(latlng,{
+    icon:L.divIcon({className:cls,html:`<div class="badge${spot?" spot":""}">${n}</div>`,iconSize:[size,size]}),
+    zIndexOffset:spot?1000:0,keyboard:false
+  }).on("click",onClick);
+}
+
+function zoomClasses(){
+  const z=map.getZoom(), el=map.getContainer();
+  el.classList.toggle("z-atoll", z>=8.25);
+  el.classList.toggle("z-labels", z>=9.75);
+  el.classList.toggle("z-labels2", z>=12);
+}
+map.on("zoomend",zoomClasses);
+
+function renderMap(){
+  counts.island={}; counts.atoll={};
+  byPillar().forEach(c=>{
+    if(c.atoll!=="national") counts.atoll[c.atoll]=(counts.atoll[c.atoll]||0)+1;
+    if(c._island) counts.island[c._island]=(counts.island[c._island]||0)+1;
+  });
+  islandLayer.setStyle(islandStyle);
+  Object.entries(reefs).forEach(([id,r])=>r.setStyle({
+    fillOpacity:id===state.atoll?.15:.45, color:(id===state.atoll||id===state.spotAtoll)?"#1769ff":"#9dbbe9"}));
+  badgeLayer.clearLayers();
+  Object.entries(counts.atoll).forEach(([id,n])=>{
+    if(!ATOLL[id]) return;
+    badge(ATOLL[id].center,n,"atoll-badge",id===state.spotAtoll,()=>openAtoll(id)).addTo(badgeLayer);
+  });
+  // island badges: commitments pinned to an island, plus atoll-level ones shown at the atoll's centre
+  Object.entries(counts.island).forEach(([id,n])=>{
+    const f=ISLAND[id];
+    badge(f.properties.c,n,"island-badge",id===state.spotIsland,()=>openIsland(id)).addTo(badgeLayer);
+  });
+}
+
+/* Navigation */
+function openAtoll(id, opts={}){
+  state.atoll=id; state.island=null; state.showAll=false;
+  map.flyToBounds(ATOLL[id].bounds,{padding:[40,40],duration:opts.duration??1.1,maxZoom:12.5});
+  renderAll();
+}
+function openIsland(id, opts={}){
+  const f=ISLAND[id]; if(!f) return;
+  state.atoll=f.properties.atoll; state.island=id;
+  const b=islandLayerById[id].getBounds();
+  map.flyToBounds(b,{padding:[80,80],maxZoom:15,duration:opts.duration??1.1});
+  renderAll();
+}
+function goHome(){
+  state.atoll=null; state.island=null; fitAll({animate:true,duration:1});
+  renderAll();
+}
+$("mapBack").onclick=()=> state.island ? openAtoll(state.atoll) : goHome();
+
+/* =====================================================================
+   4. PANEL
+   ===================================================================== */
+function renderPlace(){
+  const back=$("mapBack");
+  back.classList.toggle("show", !!state.atoll);
+  back.textContent = state.island ? `← ${atollName(state.atoll)}` : "← All atolls";
+  if(!state.atoll){
+    const nIsl=GEO.islands.features.length;
+    $("place").innerHTML = `<div class="crumbs"><b>Maldives</b></div>
+      <h2>Republic of Maldives</h2>
+      <div class="sub">${GEO.atolls.length} atolls · ${nIsl.toLocaleString()} islands mapped · click an atoll on the map to explore</div>`;
+    return;
+  }
+  const a=ATOLL[state.atoll], isl=ISLANDS_BY_ATOLL[state.atoll]||[];
+  const crumbs = `<div class="crumbs"><button data-go="home">Maldives</button> ›
+     ${state.island?`<button data-go="atoll">${esc(a.name)}</button> › <b>${esc(ISLAND[state.island].properties.name||"Unnamed islet")}</b>`:`<b>${esc(a.name)}</b>`}</div>`;
+  if(state.island){
+    const p=ISLAND[state.island].properties;
+    $("place").innerHTML = crumbs + `<h2>${esc(p.name||"Unnamed islet")}</h2>
+      <div class="sub">Island · ${esc(a.name)} Atoll</div>`;
+    return;
+  }
+  const named = isl.filter(f=>f.properties.name);
+  named.sort((x,y)=>(counts.island[y.properties.id]||0)-(counts.island[x.properties.id]||0) || x.properties.name.localeCompare(y.properties.name));
+  $("place").innerHTML = crumbs + `<h2>${esc(a.name)} Atoll</h2>
+    <div class="sub">${esc(a.formal)} · ${isl.length} islands mapped · ${named.length} named</div>
+    <div class="islands">${named.map(f=>{
+      const n=counts.island[f.properties.id]||0;
+      return `<button class="ichip${n?" has":""}" data-island="${f.properties.id}">${esc(f.properties.name)}${n?`<em>${n}</em>`:""}</button>`;
+    }).join("") || `<span class="sub">No named islands in the map data.</span>`}</div>`;
+}
+$("place").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.island) return openIsland(b.dataset.island);
+  if(b.dataset.go==="home") return goHome();
+  if(b.dataset.go==="atoll") return openAtoll(state.atoll);
+  if(b.dataset.go==="all"){state.showAll=true; renderPlace();}
+});
+
+function renderStats(){
+  const list=inScope();
+  const orgs=new Set(list.map(c=>c.org)).size;
+  const third = state.atoll
+    ? [new Set(list.map(c=>c._island).filter(Boolean)).size,"islands with commitments"]
+    : [new Set(list.map(c=>c.atoll).filter(a=>a!=="national")).size,"atolls reached"];
+  $("stats").innerHTML=[[list.length,"commitments"],[orgs,"organisations"],third]
+    .map(([n,l])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
+}
+function renderFilters(){
+  const chip=(key,label,color)=>`<button class="chip" data-p="${key}" aria-pressed="${state.pillar===(key||null)}">
+    ${color?`<i style="background:${color}"></i>`:""}${label}</button>`;
+  const lchip=(key,label)=>`<button class="chip" data-l="${key}" aria-pressed="${state.level===(key||null)}">${label}</button>`;
+  $("filters").innerHTML =
+    `<div class="frow"><span class="flabel">Pillar</span>${chip("","All") + Object.entries(PILLARS).map(([k,p])=>chip(k,p.label,p.color)).join("")}</div>
+     <div class="frow"><span class="flabel">Reported by</span>${lchip("","Everyone") + Object.entries(LEVELS).map(([k,l])=>lchip(k,l.label)).join("")}</div>`;
+}
+$("filters").addEventListener("click",e=>{
+  const b=e.target.closest(".chip"); if(!b) return;
+  if("p" in b.dataset) state.pillar=b.dataset.p||null;
+  if("l" in b.dataset) state.level=b.dataset.l||null;
+  renderAll();
+  if(document.body.classList.contains("display")) restartSpotlight();
+});
+function renderGrid(){
+  const list=inScope();
+  $("grid").innerHTML = list.length ? list.map(c=>{
+    const p=PILLARS[c.pillar]||{label:c.pillar,color:"#1769ff"};
+    return `<article class="card" style="--c:${p.color}" data-i="${COMMITMENTS.indexOf(c)}">
+      <span class="pill">${esc(p.label)}</span><p>${esc(c.text)}</p>
+      <div class="meta"><strong>${esc(c.org)}</strong><span>${esc(c.sector||"")} · ${esc(placeLabel(c))}</span></div>
+    </article>`;
+  }).join("") : `<div class="empty">No commitments here yet.</div>`;
+}
+$("grid").addEventListener("click",e=>{
+  const card=e.target.closest(".card"); if(!card) return;
+  const c=COMMITMENTS[+card.dataset.i];
+  if(c._island) openIsland(c._island); else if(ATOLL[c.atoll]) openAtoll(c.atoll);
+});
+function renderAll(){ renderMap(); renderPlace(); renderStats(); renderFilters(); renderGrid(); }
+
+/* =====================================================================
+   5. DATA IMPORT
+   ===================================================================== */
+$("importBtn").onclick=()=>$("importFile").click();
+$("importFile").onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{ setData(JSON.parse(await f.text())); }catch(err){ alert("Could not read that file: "+err.message); }
+  e.target.value="";
+};
+function setData(arr, {keepView=false}={}){
+  if(!Array.isArray(arr)) throw new Error("Expected a JSON array of commitments.");
+  COMMITMENTS=arr.filter(c=>c&&c.text&&c.org);
+  $("sampleNote").style.display="none";
+  prepare();
+  if(keepView){ if(!document.body.classList.contains("display")) renderAll(); return; }
+  state.pillar=state.level=null; goHome();
+}
+
+/* =====================================================================
+   6. DISPLAY (LED) MODE — cycles commitments and flies the map to each one
+   ===================================================================== */
+const DWELL=10000;
+function spotlightNext(){
+  const list=byPillar();   // respects the pillar and reporting-level filters chosen before entering display mode
+  if(!list.length){
+    $("spotlight").innerHTML=`<blockquote>No commitments match the current filters yet.</blockquote>`;
+    return;
+  }
+  state.i=(state.i+1)%list.length;
+  const c=list[state.i], p=PILLARS[c.pillar]||{label:c.pillar,color:"#1769ff"};
+  state.spotIsland=c._island; state.spotAtoll=ATOLL[c.atoll]?c.atoll:null;
+  state.island=c._island; state.atoll=state.spotAtoll;
+  // show the whole atoll for context; the island itself is highlighted and its badge pulses
+  if(ATOLL[c.atoll]) map.flyToBounds(ATOLL[c.atoll].bounds,{padding:[50,50],maxZoom:11.5,duration:2.2});
+  else fitAll({animate:true,duration:2.2});
+  renderMap(); renderPlace(); renderStats();
+  const scope=[state.level&&LEVELS[state.level].label, state.pillar&&PILLARS[state.pillar].label].filter(Boolean).join(" · ");
+  $("spotlight").innerHTML=`
+    ${scope?`<div class="cta">Showing: <b>${esc(scope)}</b></div>`:""}
+    <span class="pill" style="align-self:flex-start">${esc(p.label)}</span>
+    <blockquote style="--c:${p.color}">${esc(c.text)}</blockquote>
+    <div class="who"><strong>${esc(c.org)}</strong>${esc(c.sector||"")} · ${esc(placeLabel(c))}</div>
+    <div class="progress"><div id="bar"></div></div>
+    ${BACKEND?`<div class="cta">Add your commitment at <b>${esc(location.host)}/submit.html</b></div>`:""}`;
+  const bar=$("bar");
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{bar.style.transition=`width ${DWELL}ms linear`;bar.style.width="100%";}));
+}
+function restartSpotlight(){ clearInterval(state.timer); state.i=-1; spotlightNext(); state.timer=setInterval(spotlightNext,DWELL); }
+function startDisplay(){
+  document.body.classList.add("display");
+  $("displayBtn").textContent="Exit display";
+  state.i=-1;
+  if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+  setTimeout(()=>{map.invalidateSize(); spotlightNext(); state.timer=setInterval(spotlightNext,DWELL);},300);
+}
+function stopDisplay(){
+  document.body.classList.remove("display");
+  $("displayBtn").textContent="Display mode";
+  clearInterval(state.timer); state.spotIsland=state.spotAtoll=null;
+  if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+  setTimeout(()=>{map.invalidateSize(); goHome();},300);
+}
+$("displayBtn").onclick=()=>document.body.classList.contains("display")?stopDisplay():startDisplay();
+document.addEventListener("keydown",e=>{
+  if(e.target.matches("input,textarea")) return;
+  if(e.key==="f"||e.key==="F") $("displayBtn").click();
+  if(e.key==="Escape"){
+    if(document.body.classList.contains("display")) stopDisplay();
+    else if(state.island) openAtoll(state.atoll);
+    else if(state.atoll) goHome();
+  }
+});
+
+/* =====================================================================
+   7. BOOT
+   ===================================================================== */
+function sizeHeader(){ document.documentElement.style.setProperty("--header-h",$("hdr").offsetHeight+"px"); map.invalidateSize(); }
+window.addEventListener("resize",sizeHeader);
+prepare(); sizeHeader(); fitAll(); zoomClasses(); renderAll();
+
+/* Data source, in order of preference:
+   1. /api/commitments : verified (approved) commitments from server.py, refreshed every 30 s
+   2. commitments.json : a static file, for hosting without the backend
+   3. the sample list above */
+let BACKEND=false, lastFeed="";
+async function pullFeed(first){
+  const r=await fetch("/api/commitments",{cache:"no-store"});
+  if(!r.ok || !(r.headers.get("content-type")||"").includes("json")) throw new Error("no backend");
+  const arr=await r.json(), sig=JSON.stringify(arr);
+  BACKEND=true; $("live").hidden=false; $("addLink").hidden=false; $("importBtn").hidden=true;
+  if(sig!==lastFeed){ lastFeed=sig; setData(arr,{keepView:!first}); }
+}
+pullFeed(true)
+  .then(()=>setInterval(()=>pullFeed(false).catch(()=>{}),30000))
+  .catch(()=>fetch("commitments.json",{cache:"no-store"}).then(r=>r.ok?r.json():Promise.reject()).then(a=>setData(a)).catch(()=>{}));
+</script>
+</body>
+</html>

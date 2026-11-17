@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Make a Commitment</title>
+<script src="demo-api.js"></script>
+<style>
+  :root{
+    --bg:#ffffff;--surface:#f4f8ff;--surface-2:#eaf2ff;--line:#d6e4fb;
+    --ink:#0a2a5c;--ink-2:#4a6490;--blue:#1769ff;--blue-deep:#0b3d91;--blue-soft:#cfe0ff;
+    --radius:16px;--err:#b3261e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;background:var(--surface);color:var(--ink);min-height:100vh}
+  button,input,select,textarea{font:inherit;color:inherit}
+  header{background:var(--bg);border-bottom:1px solid var(--line);padding:18px 16px}
+  .wrap{max-width:720px;margin:0 auto}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue);font-weight:700}
+  h1{font-size:clamp(22px,4vw,30px);letter-spacing:-.01em;margin-top:4px}
+  header p{color:var(--ink-2);margin-top:6px;font-size:15px;line-height:1.5}
+  form,.done{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);padding:24px;margin:24px 16px;display:flex;flex-direction:column;gap:22px}
+  @media (min-width:752px){form,.done{margin:24px auto}}
+  fieldset{border:0;display:flex;flex-direction:column;gap:8px}
+  label,legend{font-weight:600;font-size:15px}
+  .hint{font-size:13px;color:var(--ink-2);font-weight:400}
+  input[type=text],input[type=email],select,textarea{
+    width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;font-size:16px;
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--blue);outline-offset:1px;border-color:var(--blue)}
+  textarea{min-height:120px;resize:vertical;line-height:1.5}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:560px){.row{grid-template-columns:1fr}}
+  .pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media (max-width:560px){.pillars{grid-template-columns:1fr}}
+  .pillar{position:relative}
+  .pillar input{position:absolute;opacity:0}
+  .pillar span{display:flex;flex-direction:column;gap:4px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;height:100%;border-top:4px solid var(--c)}
+  .pillar span b{font-size:15px}
+  .pillar span small{font-size:12px;color:var(--ink-2);line-height:1.4}
+  .pillar input:checked+span{background:var(--surface-2);border-color:var(--blue);border-top-color:var(--c)}
+  .pillar input:focus-visible+span{outline:2px solid var(--blue);outline-offset:2px}
+  .check{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:14px;line-height:1.45}
+  .check input{margin-top:3px;width:18px;height:18px;accent-color:var(--blue);flex:none}
+  .counter{font-size:12px;color:var(--ink-2);text-align:right}
+  .btn{background:var(--blue);color:#fff;border:0;border-radius:999px;padding:13px 24px;font-weight:700;font-size:16px;cursor:pointer;align-self:flex-start}
+  .btn:hover{background:var(--blue-deep)}
+  .btn[disabled]{opacity:.6;cursor:wait}
+  .error{color:var(--err);font-size:14px;font-weight:600;min-height:1em}
+  [hidden]{display:none!important}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+  .done{display:none;text-align:center;align-items:center}
+  .done .tick{width:56px;height:56px;border-radius:50%;background:var(--surface-2);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700}
+  .done h2{font-size:24px}
+  .done p{color:var(--ink-2);line-height:1.5;max-width:480px}
+  .done a,.foot a{color:var(--blue);font-weight:600}
+  .foot{text-align:center;font-size:13px;color:var(--ink-2);padding:0 16px 32px}
+  .safety{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--ink-2);line-height:1.5}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <span class="eyebrow">16 Days of Activism · Make All Spaces Safe</span>
+    <h1>Make a commitment to end technology-facilitated gender-based violence</h1>
+    <p>Tell us what you or your organisation will do. Every commitment is reviewed by UNFPA before it appears on the public board.</p>
+  </div>
+</header>
+
+<form id="form" class="wrap" novalidate>
+  <fieldset>
+    <label for="reporter_type">Who is making this commitment?</label>
+    <select id="reporter_type" name="reporter_type" required><option value="">Choose one…</option></select>
+  </fieldset>
+
+  <fieldset>
+    <label for="org" id="orgLabel">Name of organisation, council or committee</label>
+    <input type="text" id="org" name="org" maxlength="120" required autocomplete="organization">
+    <label class="check" id="publicWrap" hidden>
+      <input type="checkbox" id="display_public" name="display_public">
+      <span>Show my name on the public board. If unticked, it shows as "Individual (name withheld)".</span>
+    </label>
+  </fieldset>
+
+  <div class="row">
+    <fieldset>
+      <label for="atoll">Atoll</label>
+      <select id="atoll" name="atoll" required><option value="">Choose…</option><option value="national">Nationwide</option></select>
+    </fieldset>
+    <fieldset>
+      <label for="island">Island <span class="hint">(optional)</span></label>
+      <input type="text" id="island" name="island" list="islandList" maxlength="80" placeholder="Start typing…" autocomplete="off">
+      <datalist id="islandList"></datalist>
+    </fieldset>
+  </div>
+
+  <fieldset>
+    <legend>Which area does it support?</legend>
+    <div class="pillars">
+      <label class="pillar"><input type="radio" name="pillar" value="prevention" required><span style="--c:#1769ff"><b>Prevention</b><small>Awareness, education, safer platforms and spaces</small></span></label>
+      <label class="pillar"><input type="radio" name="pillar" value="support"><span style="--c:#00a6c8"><b>Survivor-centred support</b><small>Services, referral, counselling and care</small></span></label>
+      <label class="pillar"><input type="radio" name="pillar" value="justice"><span style="--c:#0b3d91"><b>Justice &amp; accountability</b><small>Reporting, investigation, policy and data</small></span></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <label for="text">Your commitment</label>
+    <textarea id="text" name="text" maxlength="600" required placeholder="e.g. We will train all island council staff to refer people facing online abuse to support services by June 2027."></textarea>
+    <div class="counter"><span id="count">0</span> / 600</div>
+  </fieldset>
+
+  <fieldset>
+    <label for="contact">Email for follow-up <span class="hint">(optional, never shown publicly)</span></label>
+    <input type="email" id="contact" name="contact" maxlength="160" autocomplete="email">
+  </fieldset>
+
+  <div class="safety">Please do not include personal stories, names of other people or details of any incident. This board is for commitments only. If you need support, contact your local GBV service provider.</div>
+
+  <label class="check"><input type="checkbox" id="consent" name="consent" required>
+    <span>I agree that UNFPA may review, lightly edit for length and clarity, and publish this commitment on the public board.</span></label>
+
+  <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+
+  <div class="error" id="error" role="alert"></div>
+  <button class="btn" id="submitBtn" type="submit">Submit commitment</button>
+</form>
+
+<div class="done wrap" id="done">
+  <div class="tick">✓</div>
+  <h2>Thank you</h2>
+  <p>Your commitment has been received. It will appear on the board once it has been verified by UNFPA.</p>
+  <p><a href="submit.html">Add another commitment</a> · <a href="index.html">View the board</a></p>
+</div>
+
+<p class="foot"><a href="index.html">← Back to the commitment board</a></p>
+
+<script src="islands.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const GEO=window.MALDIVES||{atolls:[],islands:{features:[]}};
+const LEVEL_LABEL={individual:"Individuals",government:"Government (ministries, councils, WDCs)",organisation:"Organisations"};
+
+// Reporter types come from the server so the form and the review page always match
+fetch("/api/meta").then(r=>r.json()).then(meta=>{
+  const groups={};
+  meta.reporter_types.forEach(t=>(groups[t.level] ||= []).push(t));
+  $("reporter_type").innerHTML='<option value="">Choose one…</option>'+Object.entries(groups).map(([lvl,ts])=>
+    `<optgroup label="${LEVEL_LABEL[lvl]||lvl}">${ts.map(t=>`<option value="${t.id}" data-level="${t.level}">${t.label}</option>`).join("")}</optgroup>`).join("");
+}).catch(()=>{ $("error").textContent="The submission service is not available right now. Please try again later."; $("submitBtn").disabled=true; });
+
+$("reporter_type").addEventListener("change",e=>{
+  const indiv = e.target.selectedOptions[0]?.dataset.level==="individual";
+  $("orgLabel").textContent = indiv ? "Your name" : "Name of organisation, council or committee";
+  $("org").autocomplete = indiv ? "name" : "organization";
+  $("publicWrap").hidden = !indiv;
+});
+
+GEO.atolls.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(a=>{
+  $("atoll").insertAdjacentHTML("beforeend",`<option value="${a.id}">${a.name}</option>`);
+});
+$("atoll").addEventListener("change",e=>{
+  const id=e.target.value;
+  const names=[...new Set(GEO.islands.features.filter(f=>f.properties.atoll===id&&f.properties.name).map(f=>f.properties.name))].sort();
+  $("islandList").innerHTML=names.map(n=>`<option value="${n.replace(/"/g,"&quot;")}">`).join("");
+  $("island").disabled = id==="national"; if(id==="national") $("island").value="";
+});
+$("text").addEventListener("input",e=>$("count").textContent=e.target.value.length);
+
+$("form").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const fd=new FormData(e.target), body=Object.fromEntries(fd.entries());
+  body.consent=$("consent").checked; body.display_public=$("display_public").checked;
+  const missing = !body.reporter_type ? "Please choose who is making the commitment."
+    : !body.org?.trim() ? "Please enter a name."
+    : !body.atoll ? "Please choose an atoll."
+    : !body.pillar ? "Please choose which area it supports."
+    : (body.text||"").trim().length<15 ? "Please write the commitment (at least 15 characters)."
+    : !body.consent ? "Please confirm consent before submitting." : "";
+  if(missing){ $("error").textContent=missing; return; }
+  $("error").textContent=""; $("submitBtn").disabled=true; $("submitBtn").textContent="Submitting…";
+  try{
+    const r=await fetch("/api/submissions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!r.ok) throw new Error(j.error||"Something went wrong.");
+    $("form").style.display="none"; $("done").style.display="flex"; window.scrollTo(0,0);
+  }catch(err){
+    $("error").textContent=err.message||"Could not submit. Please try again.";
+  }finally{
+    $("submitBtn").disabled=false; $("submitBtn").textContent="Submit commitment";
+  }
+});
+</script>
+</body>
+</html>
